@@ -1,0 +1,60 @@
+No Power Query, clique em NOva Fonte, Consulta Nula, Editor avançado e copie e cole o código abaixo:
+
+
+let
+    
+     // Criado por amandanascimento.com
+    //Insira o ano inicial e final que deseja
+    AnoInicial = 2022,
+    AnoFinal = 2023,
+    //Declara uma data inicial
+    DataInicial = Date.StartOfYear(#date(AnoInicial, 1, 1)),
+    //Declara uma data final
+    DataFinal = Date.EndOfYear(#date(AnoFinal, 12, 31)),
+    //Conta a quantidade de dias entre as duas datas
+    QtdeDias = Duration.Days(DataFinal-DataInicial)+1,
+    //Cria lista de datas
+    Datalist = List.Dates(DataInicial,QtdeDias,#duration(1,0,0,0)),
+    //Converter para Tabela
+    ConvertTabela = Table.FromList(Datalist, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    //Altera Tipo
+    AlteraTipo = Table.TransformColumnTypes(ConvertTabela,{{"Column1", type date}}),
+    //Renomeia Coluna
+    RenomeiaColuna = Table.RenameColumns(AlteraTipo,{"Column1", "Data"}),
+ 
+    //Criação de Colunas Adicionais
+    //Criar Coluna ANO
+    Ano = Table.AddColumn(RenomeiaColuna, "Ano", each Date.Year([Data]),Int64.Type),
+    //Criar Coluna Mês
+    Mes = Table.AddColumn(Ano, "Mes", each Date.Month([Data]),Int64.Type),
+    //Criar Coluna Nome do Mês
+    Nome_Mes = Table.AddColumn(Mes, "Nome_Mes", each Date.MonthName([Data]), type text),
+    //Criar Coluna Dia
+    Dia_do_Mes = Table.AddColumn(Nome_Mes, "Dia_Mes", each Date.Day([Data]), Int64.Type),
+    //Criar Coluna Dia do Ano
+    Dia_do_Ano = Table.AddColumn(Dia_do_Mes, "Dia_Ano", each Date.DayOfYear([Data]), Int64.Type),
+    //Criar Coluna Dia da Semana
+    Dia_Semana = Table.AddColumn(Dia_do_Ano, "Dia_Semana", each Date.DayOfWeek([Data]), Int64.Type),
+    //Criar Coluna Dia da Semana
+    Nome_Dia_Semana = Table.AddColumn(Dia_Semana, "Nome_Dia_Semana", each Date.DayOfWeekName([Data]), type text),
+    //Criar Coluna Dia da Semana
+    Trimestre = Table.AddColumn(Nome_Dia_Semana, "Trimestre", each Date.QuarterOfYear([Data]), Int64.Type),
+    //Criar Coluna Semana do Ano
+    Semana_Ano = Table.AddColumn(Trimestre, "Semana_Ano", each Date.WeekOfYear([Data]), Int64.Type),
+    //Criar Coluna Semana do Mes
+    Semana_Mes = Table.AddColumn(Semana_Ano, "Semana_Mes", each Date.WeekOfMonth([Data]), Int64.Type),
+    //Criar Coluna de índice
+    Índice = Table.AddIndexColumn(Semana_Mes, "Índice", 0, 1, Int64.Type),
+     //Mes por extenso
+    Nome_Mes2 = Table.AddColumn(Índice, "Mes_ext_3", each Text.Combine({Text.Start(Text.Proper([Nome_Mes]), 3), "."}), type text),
+    //ANO 2 DÍGITOS
+   ANO_XX = Table.AddColumn(Nome_Mes2, "ANO_XX", each Text.End(Text.From([Ano], "pt-BR"), 2), type text),
+    //CONCATENA MES POR EXTENSO E ANO
+    Ano_Mes_Fn = Table.AddColumn(ANO_XX, "Ano_Mes_Fn", each Text.Combine({[Mes_ext_3], [ANO_XX]}), type text),
+    // Trimestre2
+    Trimestre_ext = Table.AddColumn(Ano_Mes_Fn, "Trimestre_ext", each if [Trimestre] = 1 then "1º Tri" else if [Trimestre] = 2 then "2º Tri" else if [Trimestre] = 3 then "3º Tri" else "4º Tri"),
+   Trimestre_ext2 = Table.TransformColumnTypes(#"Trimestre_ext",{{"Trimestre_ext", type text}}),
+    #"Coluna Personalizada Adicionada" = Table.AddColumn(Trimestre_ext2, "ORD", each Text.Combine({Date.ToText([Data], "yyyy"), "0", Date.ToText([Data], "%M"), Date.ToText([Data], "dd")}), type text),
+    #"Linhas Classificadas" = Table.Sort(#"Coluna Personalizada Adicionada",{{"ORD", Order.Ascending}})
+in
+    #"Linhas Classificadas"
