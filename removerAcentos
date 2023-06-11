@@ -1,0 +1,14 @@
+= (texto as text) =>
+
+let
+    ComAcentos = Text.ToList("àáâãäèéêëìíîïòóôõöùúûüÀÁÂÃÄÈÉÊËÌÍÎÒÓÔÕÖÙÚÛÜçÇñÑ"),
+    SemAcentos = Text.ToList("aaaaaeeeeiiiiooooouuuuAAAAAEEEEIIIOOOOOUUUUcCnN"),
+    ParesAcentos = List.Zip({ComAcentos, SemAcentos}),
+    TextoQuebrado = Text.ToList(texto),
+    Substituicao = List.ReplaceMatchingItems(TextoQuebrado, ParesAcentos),
+    Resultado = Text.Combine(Substituicao),
+    UltimoCaractere = Text.End(Resultado, 1),
+    UltimoCaractereComEspaco = Text.Combine({UltimoCaractere, " "}),
+    ResultadoFinal = if Text.EndsWith(Resultado, UltimoCaractereComEspaco) then Text.RemoveRange(Resultado, Text.Length(Resultado) - 1) else Resultado
+in
+    ResultadoFinal
