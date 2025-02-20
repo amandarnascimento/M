@@ -1,0 +1,151 @@
+let
+
+    // Definir o ano inicial e final
+
+    AnoInicial = 2023,
+
+    AnoFinal = 2025,
+
+
+    // Gerar uma lista de datas do primeiro dia de cada mês entre o ano inicial e final
+
+    Datas = List.Dates(
+
+        #date(AnoInicial, 1, 1),
+
+        (AnoFinal - AnoInicial + 1) * 12,
+
+        #duration(31, 0, 0, 0)
+
+    ),
+
+
+    // Manter apenas o primeiro dia de cada mês
+
+    DatasInicioMes = List.Transform(Datas, each Date.StartOfMonth(_)),
+
+
+    // Remover duplicatas para garantir que cada mês apareça apenas uma vez
+
+    DatasUnicas = List.Distinct(DatasInicioMes),
+
+
+    // Converter a lista de datas em uma tabela
+
+    TabelaDatas = Table.FromList(DatasUnicas, Splitter.SplitByNothing(), {"Data"}),
+
+
+    // Adicionar colunas de mês e ano
+
+    AdicionarMesExt = Table.AddColumn(TabelaDatas, "Mes_Ext", each Date.ToText([Data], "MMMM", "pt-BR")),
+
+    AdicionarAno = Table.AddColumn(AdicionarMesExt, "Ano", each Date.Year([Data])),
+
+
+    // Adicionar coluna de mês em número
+
+    AdicionarMesNum = Table.AddColumn(AdicionarAno, "Mes", each Date.Month([Data])),
+
+
+    // Adicionar coluna de data final do mês
+
+    AdicionarDataFn = Table.AddColumn(AdicionarMesNum, "Data_Fn", each Date.ToText(Date.EndOfMonth([Data]), "dd/MM/yyyy")),
+
+
+    // Adicionar coluna de competência no formato yyyyMM
+
+    AdicionarCompetencia = Table.AddColumn(AdicionarDataFn, "Competencia", each Text.PadStart(Text.From([Ano]) & Text.PadStart(Text.From([Mes]), 2, "0"), 6, "0")),
+
+
+    // Renomear a coluna Data para Data_In
+
+    RenomearColunaData = Table.RenameColumns(AdicionarCompetencia, {{"Data", "Data_In"}}),
+
+
+    // Adicionar coluna de quantidade de dias úteis (segunda a sábado) em cada mês
+
+    AdicionarDiasUteisSegSab = Table.AddColumn(RenomearColunaData, "Dias_Uteis_SegSab", each 
+
+        List.Count(
+
+            List.Select(
+
+                List.Dates(
+
+                    [Data_In],
+
+                    Date.DaysInMonth([Data_In]),
+
+                    #duration(1, 0, 0, 0)
+
+                ),
+
+                each Date.DayOfWeek(_, Day.Monday) < 6
+
+            )
+
+        )
+
+    ),
+
+
+    // Adicionar coluna de quantidade de dias úteis (segunda a sexta) em cada mês
+
+    AdicionarDiasUteisSegSex = Table.AddColumn(AdicionarDiasUteisSegSab, "Dias_Uteis_SegSex", each 
+
+        List.Count(
+
+            List.Select(
+
+                List.Dates(
+
+                    [Data_In],
+
+                    Date.DaysInMonth([Data_In]),
+
+                    #duration(1, 0, 0, 0)
+
+                ),
+
+                each Date.DayOfWeek(_, Day.Monday) < 5
+
+            )
+
+        )
+
+    ),
+
+
+    // Adicionar coluna de quantidade total de dias no mês
+
+    AdicionarQntDias = Table.AddColumn(AdicionarDiasUteisSegSex, "Qnt_Dias", each Date.DaysInMonth([Data_In])),
+
+
+    // Adicionar coluna de data formatada
+
+    AdicionarDataFormatada = Table.TransformColumns(AdicionarQntDias, {{"Data_In", each Date.ToText(_, "dd/MM/yyyy"), type text}}),
+
+
+    // Adicionar coluna de mês e ano concatenados
+
+    AdicionarMesAno = Table.AddColumn(AdicionarDataFormatada, "Mes_Ano", each Text.Combine({Date.ToText(Date.FromText([Data_In]), "MMMM", "pt-BR"), Text.From([Ano])}, " ")),
+
+
+    // Adicionar coluna de ano e mês no formato yyyy-MM
+
+    AdicionarAnoMes = Table.AddColumn(AdicionarMesAno, "Ano_Mês", each Date.ToText(Date.FromText([Data_In]), "yyyy-MM")),
+
+
+    // Adicionar coluna de índice
+
+    AdicionarIndice = Table.AddIndexColumn(AdicionarAnoMes, "Index", 1, 1, Int64.Type),
+
+
+    // Alterar tipos de dados conforme necessário
+
+    #"Tipo Alterado" = Table.TransformColumnTypes(AdicionarIndice,{{"Ano_Mês", type text}, {"Dias_Uteis_SegSab", Int64.Type}, {"Dias_Uteis_SegSex", Int64.Type}, {"Qnt_Dias", Int64.Type}})
+
+
+in
+
+    #"Tipo Alterado"
